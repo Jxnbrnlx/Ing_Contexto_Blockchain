@@ -1,0 +1,81 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OrigenChain · Trazabilidad agrícola con Blockchain</title>
+<style>
+:root{--bg:#f6f3ec;--card:#fff;--ink:#1f2a1d;--mut:#6b7566;--line:#e4dfd2;--g:#2f5d3a;--g2:#e3efe5;--c:#a4622d;--ok:#2f7d46;--bad:#b3362c}
+@media(prefers-color-scheme:dark){:root{--bg:#14190f;--card:#1d2418;--ink:#eef0e6;--mut:#9aa593;--line:#2d3626;--g:#7fc48f;--g2:#24331f;--c:#e0a06a;--ok:#6fd08a;--bad:#ff8a7e}}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--g);color:#fff;padding:14px 24px;display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+@media(prefers-color-scheme:dark){header{background:#1d2e1a}}
+.logo{font:700 20px Georgia,serif}.logo span{color:#f0c58f}
+nav{display:flex;gap:4px;flex-wrap:wrap}nav a{color:#e3efe5;text-decoration:none;padding:8px 14px;border-radius:8px;font-weight:500}
+nav a.on,nav a:hover{background:rgba(255,255,255,.16);color:#fff}
+main{max-width:1060px;margin:0 auto;padding:28px 20px}h1{font:700 26px Georgia,serif;margin:0 0 4px}.sub{color:var(--mut);margin:0 0 22px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px}
+.k{font:700 30px Georgia,serif}.l{color:var(--mut);font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-size:12px;text-transform:uppercase}
+tr.fila{cursor:pointer}tr.fila:hover{background:var(--g2)}
+.tag{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--g2);color:var(--g);font-size:12px;font-weight:600}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit}
+label{display:block;font-weight:600;margin:12px 0 4px}.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+button{background:var(--g);color:#fff;border:0;padding:10px 18px;border-radius:8px;font:600 15px inherit;cursor:pointer}
+@media(prefers-color-scheme:dark){button{color:#14190f}}
+.msg{margin-top:12px;font-weight:600}.ok{color:var(--ok)}.bad{color:var(--bad)}
+.tl{border-left:3px solid var(--g);margin:10px 0 0 8px;padding-left:20px}.ev{position:relative;margin-bottom:20px}
+.ev:before{content:"";position:absolute;left:-29px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--g);border:3px solid var(--bg)}
+.ev.pend:before{background:var(--line)}.ev.pend{opacity:.55}
+.h{font:12px ui-monospace,Consolas,monospace;color:var(--mut);word-break:break-all}
+.row{display:grid;grid-template-columns:1fr 230px;gap:20px}@media(max-width:760px){.row,.f2{grid-template-columns:1fr}}
+.bloque{border-left:4px solid var(--ok)}.bloque.mal{border-left-color:var(--bad)}
+.bar{display:flex;align-items:center;gap:10px;margin:8px 0}.bar i{display:block;height:14px;background:var(--c);border-radius:4px}
+.ov{overflow-x:auto}
+</style></head><body>
+<header><div class="logo">Origen<span>Chain</span></div>
+<nav id="nav"><a href="#/resumen">Resumen</a><a href="#/lotes">Lotes</a><a href="#/registrar">Registrar lote</a><a href="#/trazabilidad">Consultar trazabilidad</a><a href="#/libro">Libro Blockchain</a></nav></header>
+<main id="v"></main>
+<script>
+const $=s=>document.querySelector(s),v=$('#v');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const api=async(u,o)=>{let r,t,j;try{r=await fetch(u,o);t=await r.text()}catch(e){throw new Error('No hay conexión con el servidor de OrigenChain. Ejecuta: python server.py y abre la URL que muestra la consola.')}
+ try{j=JSON.parse(t)}catch(e){throw new Error('Respuesta inesperada ('+r.status+': '+t.slice(0,60)+'). Otro programa está usando esta dirección; abre la URL que imprime python server.py.')}
+ if(!r.ok)throw new Error(j.error||'Error');return j};
+const post=(u,d)=>api(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+const NOM={CREACION:'Creación del lote',RECEPCION:'Recepción',DESPACHO:'Despacho',ENTREGA:'Entrega',VERIFICACION:'Verificación del comprador'};
+const head=(t,s)=>`<h1>${t}</h1><p class="sub">${s}</p>`;
+const vistas={
+async resumen(){const r=await api('/api/resumen'),ok=r.integridad.valida,mx=Math.max(1,...Object.values(r.por_estado));
+ v.innerHTML=head('Resumen','Estado general de la trazabilidad y de la cadena de bloques')+`<div class="grid">
+ <div class="card"><div class="l">Lotes</div><div class="k">${r.lotes}</div></div>
+ <div class="card"><div class="l">Movimientos</div><div class="k">${r.movimientos}</div></div>
+ <div class="card"><div class="l">Kilogramos</div><div class="k">${r.kg.toLocaleString('es-CO')}</div></div>
+ <div class="card"><div class="l">Estado Blockchain</div><div class="k ${ok?'ok':'bad'}">${ok?'Íntegra':'Alterada'}</div><div class="h">${r.bloques} bloques</div></div></div>
+ <div class="card"><b>Lotes por etapa</b>${Object.entries(r.por_estado).map(([e,n])=>`<div class="bar"><span style="width:130px">${NOM[e]}</span><i style="width:${n/mx*60}%"></i><b>${n}</b></div>`).join('')||'<p class="sub">Sin lotes</p>'}</div>`},
+async lotes(){v.innerHTML=head('Lotes','Búsqueda y consulta de productos registrados')+`<input id="q" placeholder="Buscar por código, origen, producto…" style="margin-bottom:14px"><div class="card ov" id="t"></div>`;
+ const pintar=async()=>{const ls=await api('/api/lotes?q='+encodeURIComponent($('#q').value));
+ $('#t').innerHTML=`<table><tr><th>Lote</th><th>Producto</th><th>Origen</th><th>Kg</th><th>Etapa</th></tr>${ls.map(l=>`<tr class="fila" onclick="location.hash='#/trazabilidad/${esc(l.lote)}'"><td><b>${esc(l.lote)}</b></td><td>${esc(l.producto)}</td><td>${esc(l.origen)}</td><td>${l.kg}</td><td><span class="tag">${NOM[l.estado]}</span></td></tr>`).join('')||'<tr><td colspan=5>Sin resultados</td></tr>'}</table>`};
+ $('#q').oninput=pintar;pintar()},
+async registrar(){v.innerHTML=head('Registrar lote','Crea un nuevo lote; quedará sellado en un bloque SHA-256')+`<div class="card"><div class="f2">
+ <div><label>Producto</label><select id="producto"><option>Café especial</option><option>Cacao fino de aroma</option></select></div>
+ <div><label>Variedad</label><input id="variedad" placeholder="Caturra, Castillo…"></div>
+ <div><label>Origen</label><input id="origen" placeholder="Pitalito, Huila"></div>
+ <div><label>Cantidad (kg)</label><input id="kg" type="number" min="1" step="any"></div>
+ <div><label>Productor / asociación</label><input id="actor"></div></div><br><button id="g">Registrar lote</button><div id="m" class="msg"></div></div>`;
+ $('#g').onclick=async()=>{try{const b=await post('/api/lotes',{actor:$('#actor').value,productor:$('#actor').value,producto:$('#producto').value,variedad:$('#variedad').value,origen:$('#origen').value,kg:$('#kg').value});
+ location.hash='#/trazabilidad/'+b.lote}catch(e){$('#m').className='msg bad';$('#m').textContent=e.message}}},
+async trazabilidad(id){if(!id){const ls=await api('/api/lotes');v.innerHTML=head('Consultar trazabilidad','Elige un lote')+`<div class="card">${ls.map(l=>`<p><a href="#/trazabilidad/${esc(l.lote)}">${esc(l.lote)}</a> · ${esc(l.origen)}</p>`).join('')}</div>`;return}
+ let d;try{d=await api('/api/lotes/'+encodeURIComponent(id))}catch(e){v.innerHTML=head('Lote no encontrado',esc(id));return}
+ const L=d.lote,sig=L.siguiente;
+ v.innerHTML=head(esc(L.lote),`${esc(L.producto)} · ${esc(L.origen)} · ${L.kg} kg`)+`<div class="row"><div class="card"><div class="tl">`+
+ d.flujo.map((e,i)=>{const x=d.eventos[i];return x?`<div class="ev"><b>${NOM[e]}</b> <span class="tag">${esc(x.rol)}</span><div>${esc(x.actor)}${x.datos.nota?' — '+esc(x.datos.nota):''}</div><div class="h">${x.marca_tiempo} · ${x.hash.slice(0,24)}…</div></div>`:`<div class="ev pend"><b>${NOM[e]}</b><div>Pendiente</div></div>`}).join('')+`</div>
+ ${sig?`<hr><label>Registrar «${NOM[sig]}»</label><div class="f2"><input id="ea" placeholder="Actor / organización"><input id="en" placeholder="Nota (opcional)"></div><br><button id="re">Registrar evento</button><div id="m" class="msg"></div>`:'<p class="ok"><b>Trazabilidad completa</b></p>'}</div>
+ <div class="card" style="text-align:center"><div class="l">Código QR</div><img src="/api/qr/${encodeURIComponent(L.lote)}" width="200" alt="QR"><div class="h">Escanéalo para ver este historial</div></div></div>`;
+ if(sig)$('#re').onclick=async()=>{try{await post(`/api/lotes/${id}/eventos`,{evento:sig,actor:$('#ea').value,nota:$('#en').value});vistas.trazabilidad(id)}catch(e){$('#m').className='msg bad';$('#m').textContent=e.message}}},
+async libro(){const c=await api('/api/cadena');v.innerHTML=head('Libro Blockchain','Cada bloque guarda el hash del anterior; cualquier alteración rompe la cadena')+
+ `<p class="msg ${c.valida?'ok':'bad'}">${c.valida?'✔ Verificación SHA-256 correcta: la cadena no fue alterada':'✖ Alteración detectada en el bloque '+c.bloque_invalido}</p>`+
+ c.bloques.map((b,i)=>`<div class="card bloque ${c.bloque_invalido===i?'mal':''}" style="margin-bottom:12px"><b>Bloque #${b.indice}</b> · ${esc(NOM[b.evento]||b.evento)} · ${esc(b.lote)} <span class="tag">${esc(b.rol)}</span>
+ <div class="h">Hash: ${b.hash}</div><div class="h">Previo: ${b.hash_previo}</div><div class="h">${b.marca_tiempo} · ${esc(b.actor)}</div></div>`).join('')}};
+async function ruta(){const[,n='resumen',id]=location.hash.slice(1).split('/');document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.hash==='#/'+n));
+ try{await (vistas[n]||vistas.resumen)(id&&decodeURIComponent(id))}catch(e){v.innerHTML='<p class="bad">'+esc(e.message)+'</p>'}}
+if(location.pathname.startsWith('/t/'))history.replaceState(0,'','/#/trazabilidad/'+location.pathname.slice(3));
+if(location.protocol==='file:')v.innerHTML='<div class="card bad"><b>Abriste el archivo directamente.</b> Ejecuta <code>python server.py</code> y entra por la URL que aparece en la consola (http://localhost:8000).</div>';else{addEventListener('hashchange',ruta);ruta()}
+</script></body></html>
